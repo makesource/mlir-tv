@@ -619,6 +619,16 @@ optional<string> encodeOp(State &st, mlir::ConstantOp op) {
     if(!sparseAttr.isa<mlir::SparseElementsAttr>())
       return "unsupported type";
     
+    auto type = sparseAttr.getType();
+    size_t rank = type.getRank();   // get dimension of Sparse
+
+    auto sparseIndices = sparseAttr.getIndices();
+    auto sparseIndexValues = sparseIndices.getValues<uint64_t>();
+    auto numSparseIndices = sparseIndices.getType().getDimSize(0);    // get number of SparseIndices
+
+    // llvm::outs() << "rank : " << rank << "\n";
+    // llvm::outs() << "numSparseIndices : " << numSparseIndices << "\n";
+    
     return "unsupported type";
   }
   return "unsupported constant";
