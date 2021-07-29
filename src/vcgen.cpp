@@ -615,6 +615,11 @@ optional<string> encodeOp(State &st, mlir::ConstantOp op) {
 
     st.regs.add(op, Integer(i.getSExtValue(), bw));
     return {};
+  } else if(auto sparseAttr = attr.dyn_cast<mlir::SparseElementsAttr>()) {
+    if(!sparseAttr.isa<mlir::SparseElementsAttr>())
+      return "unsupported type";
+    
+    return "unsupported type";
   }
   return "unsupported constant";
 }
