@@ -58,7 +58,7 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
       stride = stride * dims[i];
     }
 
-    return MemRef::Layout(indVars, layout, inbounds);
+    return MemRef::Layout(indVars, layout, inbounds, ctx);
   } else {
     int64_t offset;
     llvm::SmallVector<int64_t, 4> strides;
@@ -72,8 +72,26 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
       layout = layout + getConstOrVal(strides[i], "strides") * indVars[i];
       inbounds = inbounds && z3::ult(indVars[i], dims[i]);
     }
+    
+    // TODO(seongwon) (idx, idx) -> idx
+    z3::sort_vector domain(ctx);
+    domain.push_back(Index::sort());
+    domain.push_back(Index::sort());
+    z3::sort range = Index::sort();
+    z3::func_decl fn = ctx.function("fn", domain, range);
+    z3::expr precondition = fn(toExprVector(indVars)) == layout;
+    vector<z3::func_decl> inverses;
+    // idx -> (idx, idx)
+    for (int i =0; i < 2; i ++) {
+      z3::func_decl inv = ctx.function(("inverse" + to_string(i)).c_str(), range, range);
+      precondition = precondition && (inv(fn(toExprVector(indVars))) == indVars[i]);
+      inverses.push_back(inv);
+    }
 
-    return MemRef::Layout(indVars, layout, inbounds);
+    auto result = MemRef::Layout(indVars, layout, inbounds, fn);
+    result.precondition = z3::forall(toExprVector(indVars), z3::implies(inbounds, precondition)); // function precond
+    result.inverses = inverses;
+    return result;
   }
 }
 
@@ -457,7 +475,7 @@ expr Tensor::to1DArrayWithOfs(
         aop::mkZeroElemFromArr(arr)));
 }
 
-MemRef::MemRef(Memory *m) : m(m), bid(ctx), offset(ctx), layout(Layout({}, ctx, ctx)) {}
+MemRef::MemRef(Memory *m) : m(m), bid(ctx), offset(ctx), layout(Layout({}, ctx, ctx, ctx)) {}
 
 MemRef::MemRef(Memory *m,
   const smt::expr &bid,
@@ -537,6 +555,13 @@ expr MemRef::store(const expr &value, const std::vector<expr> &indices) {
 
 expr MemRef::storeArray(const expr &array, const expr &startOffset, const expr &size) {
   return m->storeArray(array, bid, offset + startOffset, size);
+}
+
+expr MemRef::storeArray2(expr &tensorVal, const expr &startOffset, const expr &size) {
+  MultipleArrayMemory &other =
+      *static_cast<MultipleArrayMemory *>(m);
+  // TODO(seongwon)
+  return other.storeArray2(layout.inverses, tensorVal, bid, offset + startOffset, size);
 }
 
 expr MemRef::isInBounds() const {
@@ -621,5 +646,5 @@ MemRef::Layout MemRef::createSubViewLayout(
      .substitute(toExprVector(layout.indVars), toExprVector(idxs));
    auto transformedInbounds = layout.inbounds
      .substitute(toExprVector(layout.indVars), toExprVector(idxs));  
-   return Layout(layout.indVars, transformed, transformedInbounds);
+   return Layout(layout.indVars, transformed, transformedInbounds, ctx);
  }

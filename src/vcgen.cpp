@@ -473,14 +473,24 @@ optional<string> encodeOp(State &st, mlir::memref::BufferCastOp op) {
     st.wellDefined(success);
     st.regs.add(op.memref(), move(memref));
   } else {
+    //////////////////
+    llvm::outs() << "Precondition! " << layout.precondition << "\n";
+    st.wellDefined(layout.precondition);
+    st.hasQuantifier = true;
     vector<expr> idxs = createIndexVars(memrefTy.getRank());
     auto tVal = tensor.get(idxs);
-    auto [mVal, success] = memref.load(idxs);
-    memref.setWritable(false);
-
-    st.wellDefined(z3::forall(toExprVector(idxs), z3::implies(success, mVal == tVal)));
-    st.hasQuantifier = true;
+    auto success = memref.storeArray2(tVal, Index::zero(), tensor.get1DSize());
+    st.wellDefined(success);
     st.regs.add(op.memref(), move(memref));
+    //////////////////
+    // vector<expr> idxs = createIndexVars(memrefTy.getRank());
+    // auto tVal = tensor.get(idxs);
+    // auto [mVal, success] = memref.load(idxs);
+    // memref.setWritable(false);
+
+    // st.wellDefined(z3::forall(toExprVector(idxs), z3::implies(success, mVal == tVal)));
+    // st.hasQuantifier = true;
+    // st.regs.add(op.memref(), move(memref));
   }
   return {};
 }

@@ -221,6 +221,35 @@ expr MultipleArrayMemory::storeArray(
     getWritable(bid);
 }
 
+expr MultipleArrayMemory::storeArray2(
+  const vector<z3::func_decl> &inverses,
+  expr &tensorVal, const expr &bid, const expr &offset, const expr &size) {
+  auto low = offset;
+  auto high = offset + size - 1;
+  auto idx = Index("idx");
+
+  auto i = inverses[0](idx - low);
+  auto j = inverses[1](idx - low);
+  auto arrayVal = tensorVal.substitute(
+    toExprVector({Index("i0.0"), Index("i1.1")}),
+    toExprVector({i, j})
+  );
+
+  llvm::outs() << "TensorVal: " << tensorVal << "\n";
+  llvm::outs() << "ArrayVal: " << arrayVal << "\n";
+
+  update(bid, [&](auto ubid) { return &arrays[ubid]; },
+    [&](auto ubid) {
+      auto currentVal = z3::select(arrays[ubid], idx);
+      z3::expr cond = z3::ule(low, idx) && z3::ule(idx, high);
+      return z3::lambda(idx, z3::ite(cond, arrayVal, currentVal));
+    });
+
+  return z3::bvadd_no_overflow(offset, size - 1, false) && // to prevent overflow
+    z3::ult(high, getNumElementsOfMemBlock(bid)) && // high < block.numelem
+    getWritable(bid);
+}
+
 std::pair<expr, expr> MultipleArrayMemory::load(
     unsigned ubid, const expr &idx) const {
   assert(ubid < getNumBlocks());
