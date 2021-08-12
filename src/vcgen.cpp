@@ -1362,7 +1362,7 @@ static Results checkRefinement(
     auto res = solve(s, not_refines, vinput.dumpSMTPath, fnname + ".3.retval");
     elapsedMillisec += res.second;
     if (res.first != z3::unsat) {
-      // llvm::outs() << "Models: " << s.get_model().to_string() << "\n";
+      llvm::outs() << "Models: " << s.get_model().to_string() << "\n";
       printErrorMsg(s, res.first, "Return value mismatch", move(params), VerificationStep::RetValue);
       return res.first == z3::sat ? Results::RETVALUE : Results::TIMEOUT;
     }

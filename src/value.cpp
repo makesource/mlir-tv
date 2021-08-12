@@ -79,6 +79,7 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
     z3::sort range = Index::sort();
     z3::func_decl fn = ctx.function("fn", domain, range);
     z3::expr precondition = fn(toExprVector(indVars)) == layout;
+    // z3::expr precondition = ctx.bool_val(true);
     vector<z3::func_decl> inverses;
     // idx -> (idx, idx)
     for (unsigned i =0; i < indVars.size(); i ++) {
