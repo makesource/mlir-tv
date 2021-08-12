@@ -75,19 +75,17 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
     
     // TODO(seongwon) (idx, idx) -> idx
     z3::sort_vector domain(ctx);
-    domain.push_back(Index::sort());
-    domain.push_back(Index::sort());
+    for (unsigned i = 0; i < indVars.size(); i ++) domain.push_back(Index::sort());
     z3::sort range = Index::sort();
     z3::func_decl fn = ctx.function("fn", domain, range);
     z3::expr precondition = fn(toExprVector(indVars)) == layout;
     vector<z3::func_decl> inverses;
     // idx -> (idx, idx)
-    for (int i =0; i < 2; i ++) {
+    for (unsigned i =0; i < indVars.size(); i ++) {
       z3::func_decl inv = ctx.function(("inverse" + to_string(i)).c_str(), range, range);
       precondition = precondition && (inv(fn(toExprVector(indVars))) == indVars[i]);
       inverses.push_back(inv);
     }
-
     auto result = MemRef::Layout(indVars, layout, inbounds, fn);
     result.precondition = z3::forall(toExprVector(indVars), z3::implies(inbounds, precondition)); // function precond
     result.inverses = inverses;
@@ -557,11 +555,11 @@ expr MemRef::storeArray(const expr &array, const expr &startOffset, const expr &
   return m->storeArray(array, bid, offset + startOffset, size);
 }
 
-expr MemRef::storeArray2(expr &tensorVal, const expr &startOffset, const expr &size) {
+expr MemRef::storeArray2(const vector<expr> &idxs, expr &tensorVal, const expr &startOffset, const expr &size) {
   MultipleArrayMemory &other =
       *static_cast<MultipleArrayMemory *>(m);
   // TODO(seongwon)
-  return other.storeArray2(layout.inverses, tensorVal, bid, offset + startOffset, size);
+  return other.storeArray2(idxs, layout.inverses, tensorVal, bid, offset + startOffset, size);
 }
 
 expr MemRef::isInBounds() const {

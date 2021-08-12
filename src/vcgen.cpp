@@ -479,7 +479,7 @@ optional<string> encodeOp(State &st, mlir::memref::BufferCastOp op) {
     st.hasQuantifier = true;
     vector<expr> idxs = createIndexVars(memrefTy.getRank());
     auto tVal = tensor.get(idxs);
-    auto success = memref.storeArray2(tVal, Index::zero(), tensor.get1DSize());
+    auto success = memref.storeArray2(idxs, tVal, Index::zero(), tensor.get1DSize());
     st.wellDefined(success);
     st.regs.add(op.memref(), move(memref));
     //////////////////
@@ -1362,6 +1362,7 @@ static Results checkRefinement(
     auto res = solve(s, not_refines, vinput.dumpSMTPath, fnname + ".3.retval");
     elapsedMillisec += res.second;
     if (res.first != z3::unsat) {
+      // llvm::outs() << "Models: " << s.get_model().to_string() << "\n";
       printErrorMsg(s, res.first, "Return value mismatch", move(params), VerificationStep::RetValue);
       return res.first == z3::sat ? Results::RETVALUE : Results::TIMEOUT;
     }

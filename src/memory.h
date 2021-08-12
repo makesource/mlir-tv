@@ -138,6 +138,7 @@ public:
       const smt::expr &arr, const smt::expr &bid, const smt::expr &offset, const smt::expr &size)
       override;
   smt::expr storeArray2(
+      const std::vector<smt::expr> &idxs,
       const std::vector<z3::func_decl> &inverses,
       smt::expr &tensorVal, const smt::expr &bid, const smt::expr &offset, const smt::expr &size);
 

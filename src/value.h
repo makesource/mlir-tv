@@ -213,7 +213,7 @@ public:
   std::pair<smt::expr, smt::expr> load(const std::vector<smt::expr> &indices);
   smt::expr store(const smt::expr &value, const std::vector<smt::expr> &indices);
   smt::expr storeArray(const smt::expr &array, const smt::expr &startOffset, const smt::expr &size);
-  smt::expr storeArray2(smt::expr &tensorVal, const smt::expr &startOffset, const smt::expr &size);
+  smt::expr storeArray2(const std::vector<smt::expr> &idxs, smt::expr &tensorVal, const smt::expr &startOffset, const smt::expr &size);
   smt::expr isInBounds() const;
   smt::expr isGlobalBlock() const;
   smt::expr isLocalBlock() const;
