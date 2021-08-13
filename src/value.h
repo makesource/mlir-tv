@@ -172,14 +172,14 @@ public:
     std::vector<smt::expr> indVars;
     smt::expr expr;
     smt::expr inbounds;
-    z3::func_decl function;
-    std::vector<z3::func_decl> inverses = {};
+    smt::expr function;
+    std::vector<smt::expr> inverses = {};
     smt::expr precondition = smt::ctx;
 
     Layout(const std::vector<smt::expr> &indVars,
       const smt::expr &expr,
       const smt::expr &inbounds,
-      const z3::func_decl &function):
+      const smt::expr &function):
       indVars(indVars), expr(expr), inbounds(inbounds), function(function) {}
   };
 

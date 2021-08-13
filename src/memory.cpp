@@ -223,14 +223,14 @@ expr MultipleArrayMemory::storeArray(
 
 expr MultipleArrayMemory::storeArray2(
   const vector<expr> &idxs,
-  const vector<z3::func_decl> &inverses,
+  const vector<expr> &inverses,
   expr &tensorVal, const expr &bid, const expr &offset, const expr &size) {
   auto low = offset;
   auto high = offset + size - 1;
   auto idx = Index("idx");
 
   vector<expr> indices;
-  for (auto inv: inverses) indices.push_back(inv(idx - low));
+  for (auto inv: inverses) indices.push_back(z3::select(inv, idx - low));
 
   auto arrayVal = tensorVal.substitute(toExprVector(idxs), toExprVector(indices));
 

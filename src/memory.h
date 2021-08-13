@@ -139,7 +139,7 @@ public:
       override;
   smt::expr storeArray2(
       const std::vector<smt::expr> &idxs,
-      const std::vector<z3::func_decl> &inverses,
+      const std::vector<smt::expr> &inverses,
       smt::expr &tensorVal, const smt::expr &bid, const smt::expr &offset, const smt::expr &size);
 
   std::pair<smt::expr, smt::expr> load(

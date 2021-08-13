@@ -1,6 +1,6 @@
 // VERIFY
 
-#map = affine_map<(d0, d1) -> (d1 * 100 + d0)>
+#map = affine_map<(d0, d1)[s0] -> (d1 * s0 + d0)>
 func @buffer_cast(%arg : tensor<?x?xf32>) -> f32
 {
   %c0 = constant 0 : index

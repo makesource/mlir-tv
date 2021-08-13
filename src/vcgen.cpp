@@ -1336,16 +1336,16 @@ static Results checkRefinement(
     }
   }
 
-  { // 2. Check whether src is always UB
-    auto s = z3::solver(ctx, logic);
-    auto not_ub = st_src.isWellDefined.simplify();
-    auto res = solve(s, not_ub, vinput.dumpSMTPath, fnname + ".2.notub");
-    elapsedMillisec += res.second;
-    if (res.first == z3::unsat) {
-      llvm::outs() << "== Result: correct (source is always undefined) ==\n";
-      return Results::SUCCESS;
-    }
-  }
+  // { // 2. Check whether src is always UB
+  //   auto s = z3::solver(ctx, logic);
+  //   auto not_ub = st_src.isWellDefined.simplify();
+  //   auto res = solve(s, not_ub, vinput.dumpSMTPath, fnname + ".2.notub");
+  //   elapsedMillisec += res.second;
+  //   if (res.first == z3::unsat) {
+  //     llvm::outs() << "== Result: correct (source is always undefined) ==\n";
+  //     return Results::SUCCESS;
+  //   }
+  // }
 
   if (st_src.retValue) { // 3. Check the return values
     auto s = z3::solver(ctx, logic);
@@ -1362,7 +1362,7 @@ static Results checkRefinement(
     auto res = solve(s, not_refines, vinput.dumpSMTPath, fnname + ".3.retval");
     elapsedMillisec += res.second;
     if (res.first != z3::unsat) {
-      llvm::outs() << "Models: " << s.get_model().to_string() << "\n";
+      // llvm::outs() << "Models: " << s.get_model().to_string() << "\n";
       printErrorMsg(s, res.first, "Return value mismatch", move(params), VerificationStep::RetValue);
       return res.first == z3::sat ? Results::RETVALUE : Results::TIMEOUT;
     }

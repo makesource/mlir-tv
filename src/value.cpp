@@ -77,14 +77,16 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
     z3::sort_vector domain(ctx);
     for (unsigned i = 0; i < indVars.size(); i ++) domain.push_back(Index::sort());
     z3::sort range = Index::sort();
-    z3::func_decl fn = ctx.function("fn", domain, range);
-    z3::expr precondition = fn(toExprVector(indVars)) == layout;
+    z3::func_decl fn_decl = ctx.function("fn", domain, range);
+    z3::expr fn = z3::lambda(toExprVector(indVars), fn_decl(toExprVector(indVars))); // using uninterpreted function
+    z3::expr precondition = fn_decl(toExprVector(indVars)) == layout;
     // z3::expr precondition = ctx.bool_val(true);
-    vector<z3::func_decl> inverses;
+    vector<expr> inverses;
     // idx -> (idx, idx)
     for (unsigned i =0; i < indVars.size(); i ++) {
-      z3::func_decl inv = ctx.function(("inverse" + to_string(i)).c_str(), range, range);
-      precondition = precondition && (inv(fn(toExprVector(indVars))) == indVars[i]);
+      z3::func_decl inv_decl = ctx.function(("inverse" + to_string(i)).c_str(), range, range);
+      z3::expr inv = z3::lambda(indVars[i], inv_decl(indVars[i]));
+      precondition = precondition && z3::select(inv, z3::select(fn, toExprVector(indVars))) == indVars[i];
       inverses.push_back(inv);
     }
     auto result = MemRef::Layout(indVars, layout, inbounds, fn);
@@ -628,7 +630,7 @@ pair<expr, expr> MemRef::to1DIdxWithLayout(const vector<expr> &idxs) {
   // auto inbounds = layout.inbounds.substitute(toExprVector(layout.indVars), toExprVector(idxs));
   // return {expr, inbounds};
 
-  auto expr = layout.function(toExprVector(idxs));
+  auto expr = z3::select(layout.function, toExprVector(idxs));
   auto inbounds = layout.inbounds.substitute(toExprVector(layout.indVars), toExprVector(idxs));
   return {expr, inbounds};
 }
