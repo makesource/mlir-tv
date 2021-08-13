@@ -624,7 +624,11 @@ MemRef MemRef::eval(z3::model m) const {
 }
 
 pair<expr, expr> MemRef::to1DIdxWithLayout(const vector<expr> &idxs) {
-  auto expr = layout.expr.substitute(toExprVector(layout.indVars), toExprVector(idxs));
+  // auto expr = layout.expr.substitute(toExprVector(layout.indVars), toExprVector(idxs));
+  // auto inbounds = layout.inbounds.substitute(toExprVector(layout.indVars), toExprVector(idxs));
+  // return {expr, inbounds};
+
+  auto expr = layout.function(toExprVector(idxs));
   auto inbounds = layout.inbounds.substitute(toExprVector(layout.indVars), toExprVector(idxs));
   return {expr, inbounds};
 }
