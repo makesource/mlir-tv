@@ -34,6 +34,7 @@ std::string or_omit(const std::vector<expr> &evec);
 expr substitute(expr e, const std::vector<expr> &vars,
                 const std::vector<expr> &values);
 expr forall(const std::vector<expr> &vars, const expr &e);
+expr lambda(const std::vector<expr> &vars, const expr &e);
 expr mkFreshVar(const sort &s, std::string &&prefix);
 expr mkVar(const sort &s, std::string &&name);
 expr mkBV(uint64_t i, unsigned bw);

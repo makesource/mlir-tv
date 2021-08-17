@@ -7,6 +7,20 @@
 using namespace smt;
 using namespace std;
 
+namespace {
+z3::expr_vector toExprVector(const vector<smt::expr> &vec) {
+  z3::expr_vector ev(smt::ctx);
+  for (auto &e: vec)
+    ev.push_back(e);
+  return ev;
+}
+}
+
+static string freshName(string prefix) {
+  static int count = 0;
+  return prefix + to_string(count ++);
+}
+
 static vector<expr> getDims(
     const mlir::ShapedType &shapedTy, bool freshVarForUnknownSize = false) {
   vector<expr> dims;
@@ -45,8 +59,6 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
   auto affineMaps = memRefTy.getAffineMaps();
 
   if (affineMaps.empty()) {
-    expr layout = Index::zero();
-    expr stride = Index::one();
     vector<expr> indVars;
     expr inbounds = mkBool(true);
 
@@ -55,12 +67,15 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
       inbounds = inbounds && z3::ult(indVars[i], dims[i]);
     }
 
-    for (int i = dims.size() - 1; i >= 0; i --) {
-      layout = layout + stride * indVars[i];
-      stride = stride * dims[i];
-    }
-
-    return MemRef::Layout(indVars, layout, inbounds);
+    // we can give concrete definition of "mapping", "inverseMappings".
+    expr mapping = lambda(indVars, to1DIdx(indVars, dims));
+    auto idx = Index("1DIdx");
+    auto indices = from1DIdx(idx, dims);
+    vector<expr> inverseMappings;
+    for (auto index : indices) inverseMappings.push_back(z3::lambda(idx, index));
+    expr precondition = mkBool(true);
+    return MemRef::Layout(indVars, inbounds, mapping, inverseMappings, precondition);
+    
   } else {
     int64_t offset;
     llvm::SmallVector<int64_t, 4> strides;
@@ -75,13 +90,22 @@ getLayout(const mlir::MemRefType &memRefTy, const vector<expr> &dims) {
       inbounds = inbounds && z3::ult(indVars[i], dims[i]);
     }
 
-    return MemRef::Layout(indVars, layout, inbounds);
-  }
-}
+    // we give abstract definition of "mapping", "inverseMappings".
+    // and add actual definition into precondition
+    expr mapping = lambda(indVars, layout);
+    expr condition = mkBool(true);
 
-static string freshName(string prefix) {
-  static int count = 0;
-  return prefix + to_string(count ++);
+    vector<expr> inverseMappings;
+    for (unsigned i =0; i < indVars.size(); i ++) {
+      z3::func_decl inverseFn = ctx.function(freshName("inverse" + to_string(i)).c_str(), Index::sort(), Index::sort());
+      z3::expr inverse = z3::lambda(indVars[i], inverseFn(indVars[i]));
+      condition = condition && z3::select(inverse, z3::select(mapping, toExprVector(indVars))) == indVars[i];
+      inverseMappings.push_back(inverse);
+    }
+    expr precondition = z3::forall(toExprVector(indVars), z3::implies(inbounds, condition)); // function precond
+
+    return MemRef::Layout(indVars, inbounds, mapping, inverseMappings, precondition);
+  }
 }
 
 Index::Index(unsigned i): e(mkBV(i, BITS)) {}
@@ -659,7 +683,7 @@ MemRef MemRef::eval(model mdl) const {
 }
 
 pair<expr, expr> MemRef::to1DIdxWithLayout(const vector<expr> &idxs) {
-  auto expr = substitute(layout.expr, layout.indVars, idxs);
+  auto expr = z3::select(layout.mapping, toExprVector(idxs));
   auto inbounds = substitute(layout.inbounds, layout.indVars, idxs);
   return {expr, inbounds};
 }
@@ -681,7 +705,19 @@ MemRef::Layout MemRef::createSubViewLayout(
     if (!indVars[i].is_numeral()) transformedIndVars.push_back(indVars[i]);
   }
 
-  auto transformed = substitute(layout.expr, layout.indVars, idxs);
   auto transformedInbounds = substitute(layout.inbounds, layout.indVars, idxs);
-  return Layout(transformedIndVars, transformed, transformedInbounds);
+
+  expr mapping = lambda(transformedIndVars, z3::select(layout.mapping, toExprVector(idxs))); // use concrete
+  expr condition = mkBool(true);
+  vector<expr> inverseMappings;
+  for (unsigned i =0; i < transformedIndVars.size(); i ++) {
+    z3::func_decl inverseFn = ctx.function(freshName("inverse" + to_string(i)).c_str(), Index::sort(), Index::sort());
+    z3::expr inverse = z3::lambda(transformedIndVars[i], inverseFn(transformedIndVars[i]));
+    condition = condition && z3::select(inverse, z3::select(mapping, toExprVector(transformedIndVars))) == transformedIndVars[i];
+    inverseMappings.push_back(inverse);
+  }
+  expr precondition = z3::forall(toExprVector(transformedIndVars), z3::implies(transformedInbounds, condition)); // function precond
+
+  // TODO(makesource) 
+  return Layout(transformedIndVars, transformedInbounds, mapping, inverseMappings, precondition);
 }

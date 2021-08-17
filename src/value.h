@@ -175,17 +175,35 @@ public:
   class Layout {
   public:
     std::vector<smt::expr> indVars;
-    smt::expr expr;
     smt::expr inbounds;
+    // ex)
+    // mapping := (d0, d1) -> f(d0, d1)
+    smt::expr mapping; 
+    // ex)
+    // inverseMapping[0] := inv[0](f(d0, d1)) -> d0
+    // inverseMapping[1] := inv[1](f(d0, d1)) -> d1
+    std::vector<smt::expr> inverseMappings; 
+    // Precondition for layout mapping function. 
+    // This will be used by smt solver if concrete layout is needed.
+    // ex) forall (d0, d1), 0 <= d0 < 4 && 0 <= d1 < 4 -> f(d0, d1) = 4 * d0 + d1
+    smt::expr precondition;
 
     Layout(const std::vector<smt::expr> &indVars,
-      const smt::expr &expr,
-      const smt::expr &inbounds):
-      indVars(indVars), expr(expr), inbounds(inbounds) {}
+        const smt::expr &inbounds,
+        const smt::expr &mapping,
+        const std::vector<smt::expr> &inverseMappings,
+        const smt::expr &precondition):
+      indVars(indVars), inbounds(inbounds),
+      mapping(mapping), inverseMappings(inverseMappings), precondition(precondition) {}
 
     Layout eval(smt::model mdl) const {
-      return { indVars, mdl.eval(expr).simplify(),
-               mdl.eval(inbounds).simplify() };
+      return {
+        indVars,
+        mdl.eval(inbounds).simplify(),
+        mapping,
+        inverseMappings,
+        mdl.eval(precondition).simplify()
+      };
     }
   };
 
@@ -226,6 +244,7 @@ public:
   smt::expr get1DSize() const { return smt::get1DSize(dims); }
   Index getDim(uint64_t idx) const;
   std::vector<smt::expr> getDims() const { return dims; }
+  smt::expr getLayoutPrecondition() const { return layout.precondition; }
   void setWritable(bool writable);
   void setMemory(Memory *m) { this->m = m; }
 

@@ -128,6 +128,10 @@ expr forall(const std::vector<expr> &vars, const expr &e) {
   return z3::forall(toExprVector(vars), e);
 }
 
+expr lambda(const std::vector<expr> &vars, const expr &e) {
+  return z3::lambda(toExprVector(vars), e);
+}
+
 sort bvSort(unsigned bw) {
   return ctx.bv_sort(bw);
 }

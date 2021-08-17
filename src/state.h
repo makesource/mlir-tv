@@ -51,6 +51,7 @@ public:
 
 class State {
 private:
+  smt::expr pred = smt::mkBool(true);
   // welldef[i]: is instruction i well-defined?
   llvm::DenseMap<mlir::Operation *, smt::expr> welldef;
 
@@ -79,9 +80,11 @@ public:
 
   State(unsigned int numBlocks, MemEncoding encoding);
 
+  void precondition(smt::expr &&e) { pred = pred && e; }
   void wellDefined(mlir::Operation *op, smt::expr &&e);
   smt::expr isWellDefined() const;
   smt::expr isOpWellDefined(mlir::Operation *op) const;
+  smt::expr getPrecondition() const { return pred; }
 
   friend llvm::raw_ostream& operator<<(llvm::raw_ostream&, State &);
 };
