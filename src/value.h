@@ -195,16 +195,6 @@ public:
         const smt::expr &precondition):
       indVars(indVars), inbounds(inbounds),
       mapping(mapping), inverseMappings(inverseMappings), precondition(precondition) {}
-
-    Layout eval(smt::model mdl) const {
-      return {
-        indVars,
-        mdl.eval(inbounds).simplify(),
-        mapping,
-        inverseMappings,
-        mdl.eval(precondition).simplify()
-      };
-    }
   };
 
   MemRef(Memory *m,

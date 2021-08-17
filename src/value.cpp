@@ -678,7 +678,6 @@ MemRef MemRef::eval(model mdl) const {
   m2.bid = mdl.eval(m2.bid, true).simplify();
   m2.offset = mdl.eval(m2.offset, true).simplify();
 
-  m2.layout = m2.layout.eval(mdl);
   return m2;
 }
 
