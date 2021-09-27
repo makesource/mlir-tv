@@ -144,7 +144,12 @@ Expr associativeSum(const Expr &a, const Expr &n) {
 
   if (!assoc_sumfn)
     assoc_sumfn.emplace(bag.sort(), Float::sort(), "smt_assoc_sum");
-  return (*assoc_sumfn)(bag);
+  Expr result = (*assoc_sumfn)(bag);
+
+  if (n.isNumeral())
+    staticArrays.push_back({bag, n, result});
+
+  return result;
 }
 
 Expr dot(const Expr &a, const Expr &b, const Expr &n) {
@@ -181,30 +186,47 @@ Expr dot(const Expr &a, const Expr &b, const Expr &n) {
 }
 
 Expr getAssociativePrecondition() {
-  Expr precond = Expr::mkBool(true);
-  for (unsigned i = 0; i < staticArrays.size(); i ++) {
-    for (unsigned j = i + 1; j < staticArrays.size(); j ++) {
-      auto [a, an, asum] = staticArrays[i];
-      auto [b, bn, bsum] = staticArrays[j];
-      uint64_t alen, blen;
-      if (!an.isUInt(alen) || !bn.isUInt(blen) || alen != blen) continue;
-      FnDecl hashfn(Float::sort(), Index::sort(), freshName("hash"));
+  if (useHashFn) {
+    // precondition between  `hashfn <-> sumfn`
+    Expr precond = Expr::mkBool(true);
+    for (unsigned i = 0; i < staticArrays.size(); i ++) {
+      for (unsigned j = i + 1; j < staticArrays.size(); j ++) {
+        auto [a, an, asum] = staticArrays[i];
+        auto [b, bn, bsum] = staticArrays[j];
+        uint64_t alen, blen;
+        if (!an.isUInt(alen) || !bn.isUInt(blen) || alen != blen) continue;
+        FnDecl hashfn(Float::sort(), Index::sort(), freshName("hash"));
 
-      auto aVal = hashfn.apply(a.select(Index(0)));
-      for (unsigned i = 1; i < alen; i ++)
-        aVal = aVal + hashfn.apply(a.select(Index(i)));
-      auto bVal = hashfn.apply(b.select(Index(0)));
-      for (unsigned i = 1; i < blen; i ++)
-        bVal = bVal + hashfn.apply(b.select(Index(i)));
+        auto aVal = hashfn.apply(a.select(Index(0)));
+        for (unsigned i = 1; i < alen; i ++)
+          aVal = aVal + hashfn.apply(a.select(Index(i)));
+        auto bVal = hashfn.apply(b.select(Index(0)));
+        for (unsigned i = 1; i < blen; i ++)
+          bVal = bVal + hashfn.apply(b.select(Index(i)));
 
-      // precond: sumfn(A) != sumfn(B) -> hashfn(A) != hashfn(B)
-      // This means if two summations are different, we can find concrete hash function that hashes into different value.
-      auto associativity = (!(asum == bsum)).implies(!(aVal == bVal));
-      precond = precond & associativity;
+        // precond: sumfn(A) != sumfn(B) -> hashfn(A) != hashfn(B)
+        // This means if two summations are different, we can find concrete hash function that hashes into different value.
+        auto associativity = (!(asum == bsum)).implies(!(aVal == bVal));
+        precond = precond & associativity;
+      }
     }
+    precond = precond.simplify();
+    return precond;
+  } else {
+    // precondition between  `bag equality <-> assoc_sumfn`
+    Expr precond = Expr::mkBool(true);
+    for (unsigned i = 0; i < staticArrays.size(); i ++) {
+      for (unsigned j = i + 1; j < staticArrays.size(); j ++) {
+        auto [abag, an, asum] = staticArrays[i];
+        auto [bbag, bn, bsum] = staticArrays[j];
+        uint64_t alen, blen;
+        if (!an.isUInt(alen) || !bn.isUInt(blen) || alen != blen) continue;
+        precond = precond & (abag == bbag).implies(asum == bsum);
+      }
+    }
+    precond = precond.simplify();
+    return precond;
   }
-  precond = precond.simplify();
-  return precond;
 }
 
 }

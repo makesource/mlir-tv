@@ -338,7 +338,7 @@ static tuple<State, State, Expr> encodeFinalStates(
   State st_tgt = encodeFinalState(
       vinput, move(initMemTgt), printOps, false, args, preconds);
 
-  if (aop::getAddAssociativity() && vinput.useHash)
+  if (aop::getAddAssociativity())
     preconds.push_back(aop::getAssociativePrecondition());
 
   Expr precond =
