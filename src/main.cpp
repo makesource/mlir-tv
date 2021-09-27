@@ -39,6 +39,10 @@ llvm::cl::opt<bool> arg_cross_check("cross-check",
   llvm::cl::desc("Run all SMT solvers and cross-check the results. "
                  "By default, Z3 is only used."));
 
+llvm::cl::opt<bool> arg_cvc_only("cvc-only",
+  llvm::cl::desc("Run all SMT solvers and cross-check the results. "
+                 "By default, Z3 is only used."));
+
 llvm::cl::opt<unsigned int> num_memblocks("num-memory-blocks",
   llvm::cl::desc("Number of memory blocks required to validate translation"
                  " (default=8)"),
@@ -98,11 +102,17 @@ int main(int argc, char* argv[]) {
   llvm::cl::ParseCommandLineOptions(argc, argv);
 
   smt::setTimeout(arg_smt_to.getValue());
-  smt::useZ3();
-#ifdef SOLVER_CVC5
-  if (arg_cross_check)
+
+  if (arg_cvc_only) {
+    // smt::useZ3();
     smt::useCVC5();
-#endif
+  } else {
+  smt::useZ3();
+  #ifdef SOLVER_CVC5
+    if (arg_cross_check)
+      smt::useCVC5();
+  #endif
+  }
 
   MLIRContext context;
   DialectRegistry registry;
