@@ -26,14 +26,16 @@ namespace aop {
 
 static AbsLevelDot alDot;
 static bool isAddAssociative;
+static bool useHashFn;
 static UsedAbstractOps usedOps;
 static vector<tuple<Expr, Expr, Expr>> staticArrays;
 
 UsedAbstractOps getUsedAbstractOps() { return usedOps; }
 
-void setAbstractionLevel(AbsLevelDot ad, bool addAssoc) {
+void setAbstractionLevel(AbsLevelDot ad, bool addAssoc, bool useHash) {
   alDot = ad;
   isAddAssociative = addAssoc;
+  useHashFn = useHash;
   memset(&usedOps, 0, sizeof(usedOps));
 
   fpconst_absrepr.clear();
@@ -131,6 +133,20 @@ Expr sum(const Expr &a, const Expr &n) {
   return result;
 }
 
+Expr associativeSum(const Expr &a, const Expr &n) {
+  uint64_t length;
+  if (!n.isUInt(length))
+    assert("Only an array of constant length is supported.");
+  auto bag = Expr::mkEmptyBag(Float::sort());
+  for (unsigned i = 0; i < length; i ++)
+    bag = bag.insert(a.select(Index(i)));
+  bag = bag.simplify();
+
+  if (!assoc_sumfn)
+    assoc_sumfn.emplace(bag.sort(), Float::sort(), "smt_assoc_sum");
+  return (*assoc_sumfn)(bag);
+}
+
 Expr dot(const Expr &a, const Expr &b, const Expr &n) {
   if (alDot == AbsLevelDot::FULLY_ABS) {
     usedOps.dot = true;
@@ -156,7 +172,10 @@ Expr dot(const Expr &a, const Expr &b, const Expr &n) {
     Expr ai = a.select(i), bi = b.select(i);
     Expr arr = Expr::mkLambda(i, fpMul(ai, bi));
 
-    return sum(arr, n);
+    if (isAddAssociative && !useHashFn)
+      return associativeSum(arr, n);
+    else
+      return sum(arr, n);
   }
   llvm_unreachable("Unknown abstraction level for dot");
 }

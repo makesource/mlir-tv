@@ -49,6 +49,10 @@ llvm::cl::opt<bool> arg_associative_sum("associative",
                  "(experimental)"),
   llvm::cl::init(false));
 
+llvm::cl::opt<bool> arg_hashfn("hashfn",
+  llvm::cl::desc("Support associativity using hashfn"),
+  llvm::cl::init(false));
+
 llvm::cl::opt<MemEncoding> memory_encoding("memory-encoding",
   llvm::cl::desc("Type of memref memory model (default=MULTIPLE)"),
   llvm::cl::init(MemEncoding::MULTIPLE_ARRAY), llvm::cl::Hidden,
@@ -81,7 +85,8 @@ static unsigned validateBuffer(unique_ptr<llvm::MemoryBuffer> srcBuffer,
     arg_dump_smt_to.getValue(),
     num_memblocks.getValue(),
     memory_encoding.getValue(),
-    arg_associative_sum.getValue()
+    arg_associative_sum.getValue(),
+    arg_hashfn.getValue()
     ).code;
 }
 
