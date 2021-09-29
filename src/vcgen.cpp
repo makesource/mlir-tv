@@ -147,8 +147,6 @@ static pair<CheckResult, int64_t> solve(
   //solver.reset();
   solver.add(refinement_negated);
 
-  llvm::outs() << "Solve called!\n";
-
   if (!dumpSMTPath.empty()) {
 #if SOLVER_Z3
     if (refinement_negated.hasZ3Expr()) {

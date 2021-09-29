@@ -13,7 +13,7 @@ static string freshName(string prefix) {
 
 namespace {
 // Abstract representation of fp constants.
-map<double, Expr> fpconst_absrepr;
+map<float, Expr> fpconst_absrepr;
 unsigned fpconst_absrepr_num;
 
 // TODO: this must be properly set
@@ -52,7 +52,7 @@ Sort fpSort() {
   return Sort::bvSort(FP_BITS);
 }
 
-Expr fpConst(double f) {
+Expr fpConst(float f) {
   // We don't explicitly encode f
   auto itr = fpconst_absrepr.find(f);
   if (itr != fpconst_absrepr.end())
@@ -72,8 +72,8 @@ Expr fpConst(double f) {
   return e;
 }
 
-vector<double> fpPossibleConsts(const Expr &e) {
-  vector<double> vec;
+vector<float> fpPossibleConsts(const Expr &e) {
+  vector<float> vec;
   for (auto &[k, v]: fpconst_absrepr) {
     if (v.isIdentical(e))
       vec.push_back(k);
@@ -134,17 +134,14 @@ Expr sum(const Expr &a, const Expr &n) {
 }
 
 Expr associativeSum(const Expr &a, const Expr &n) {
-  llvm::outs() <<"GGG\n";
   uint64_t length;
   if (!n.isUInt(length))
     assert("Only an array of constant length is supported.");
   auto bag = Expr::mkEmptyBag(Float::sort());
-  llvm::outs() <<"GGG22: " << length << "\n";
   for (unsigned i = 0; i < length; i ++)
     bag = bag.insert(a.select(Index(i)));
-    llvm::outs() <<"GGG333\n";
   bag = bag.simplify();
-llvm::outs() <<"GGG33\n";
+
   if (!assoc_sumfn)
     assoc_sumfn.emplace(bag.sort(), Float::sort(), "smt_assoc_sum");
   Expr result = (*assoc_sumfn)(bag);
@@ -156,7 +153,6 @@ llvm::outs() <<"GGG33\n";
 }
 
 Expr dot(const Expr &a, const Expr &b, const Expr &n) {
-  llvm::outs() <<"FF777\n";
   if (alDot == AbsLevelDot::FULLY_ABS) {
     usedOps.dot = true;
     // TODO: check that a.get_Sort() == b.get_Sort()
@@ -175,16 +171,11 @@ Expr dot(const Expr &a, const Expr &b, const Expr &n) {
         Expr::mkLambda(i, Expr::mkIte(i.ult(n), ai, zero))});
     return lhs + rhs;
   } else if (alDot == AbsLevelDot::SUM_MUL) {
-    llvm::outs() <<"FF7772\n";
     usedOps.mul = usedOps.sum = true;
-    llvm::outs() <<"FF7774\n";
     // TODO: check that a.get_Sort() == b.get_Sort()
     auto i = (Expr)Index::var("idx", VarType::BOUND);
-    llvm::outs() <<"FF7775\n";
     Expr ai = a.select(i), bi = b.select(i);
-    llvm::outs() <<"FF7776\n";
     Expr arr = Expr::mkLambda(i, fpMul(ai, bi));
-    llvm::outs() <<"FF7777\n";
 
     if (isAddAssociative && !useHashFn)
       return associativeSum(arr, n);
