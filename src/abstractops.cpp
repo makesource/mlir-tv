@@ -138,9 +138,10 @@ Expr associativeSum(const Expr &a, const Expr &n) {
   if (!n.isUInt(length))
     assert("Only an array of constant length is supported.");
   auto bag = Expr::mkEmptyBag(Float::sort());
-  for (unsigned i = 0; i < length; i ++)
+  for (unsigned i = 0; i < length; i ++) {
     bag = bag.insert(a.select(Index(i)));
-  bag = bag.simplify();
+    bag = bag.simplify();
+  }
 
   if (!assoc_sumfn)
     assoc_sumfn.emplace(bag.sort(), Float::sort(), "smt_assoc_sum");

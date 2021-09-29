@@ -5,8 +5,8 @@ func @f() -> tensor<f32> {
   %c0 = constant 5.0: f32
   %c1 = constant 8.0: f32
   %c2 = constant 4.0: f32
-  %i1 = constant 5: index
-  %i2 = constant 2: index
+  %i1 = constant 4: index
+  %i2 = constant 1: index
   %a = linalg.fill (%c0, %t): f32, tensor<10xf32> -> tensor<10xf32>
   %b = linalg.fill (%c0, %t): f32, tensor<10xf32> -> tensor<10xf32>
 
