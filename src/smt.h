@@ -139,6 +139,10 @@ public:
   Expr operator-(uint64_t rhs) const;
   Expr operator*(const Expr &rhs) const;
   Expr operator*(uint64_t rhs) const;
+  Expr operator/(const Expr &rhs) const;
+  Expr operator/(uint64_t rhs) const;
+  Expr operator%(const Expr &rhs) const;
+  Expr operator%(uint64_t rhs) const;
   Expr operator&(const Expr &rhs) const;
   Expr operator&(bool rhs) const;
   Expr operator|(const Expr &rhs) const;
@@ -218,6 +222,7 @@ public:
   bool isArray() const;
   Sort getArrayDomain() const;
   bool isBV() const;
+  void print() const;
 
   // Convert to a function type if this is an array type.
   // This is necessary in CVC5 because it differentiates those two.

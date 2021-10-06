@@ -27,6 +27,19 @@ public:
   }
 };
 
+// class Float: Matcher {
+//     std::optional<Expr> *e;
+
+// public:
+//   Float(std::optional<Expr> &e): e(&e) {}
+
+//   bool match(const Expr &expr) const { return (*this)(expr); }
+//   bool operator()(const Expr &expr) const {
+//     e->emplace(std::move(expr));
+//     return true;
+//   }
+// }
+
 class ConstSplatArray: Matcher {
   std::function<bool(const Expr &)> subMatcher;
 

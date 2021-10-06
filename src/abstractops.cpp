@@ -17,7 +17,7 @@ namespace {
 // What we need to do is to statically find how many 'different' fp values a
 // program may observe.
 // FP_BITS must be geq than 3 (otherwise it can't handle reserved values)
-const unsigned FP_BITS = 32;
+const unsigned FP_BITS = 4;
 
 // NaNs and Infs must not be used as keys
 // because they break the entire map.
@@ -120,9 +120,23 @@ Expr mkZeroElemFromArr(const Expr &arr) {
 
 optional<FnDecl> sumfn, assoc_sumfn, dotfn, fpaddfn, fpmulfn;
 
+// Sum + Sum 
+// Sum + float 
+// float + Sum
 Expr fpAdd(const Expr &f1, const Expr &f2) {
   usedOps.add = true;
   auto fty = f1.sort();
+
+  // llvm::outs() << "F1: " << f1 << "\n";
+  // llvm::outs() << "F2: " << f2 << "\n";
+
+  Expr i = Index::var("idx", VarType::BOUND);
+  auto lambda = Expr::mkLambda(i, Expr::mkIte(i == 0, f1, f2));
+  if (!sumfn)
+    sumfn.emplace(lambda.sort(), Float::sort(), "smt_sum");
+  auto res = (*sumfn)(lambda);
+  staticArrays.push_back({lambda, Index(2), res}); 
+  return res; 
 
   if (!fpaddfn)
     fpaddfn.emplace({fty, fty}, fty, "fp_add");
@@ -217,6 +231,7 @@ Expr dot(const Expr &a, const Expr &b, const Expr &n) {
 }
 
 Expr getAssociativePrecondition() {
+
   Expr precond = Expr::mkBool(true);
   for (unsigned i = 0; i < staticArrays.size(); i ++) {
     for (unsigned j = i + 1; j < staticArrays.size(); j ++) {
@@ -227,11 +242,11 @@ Expr getAssociativePrecondition() {
       FnDecl hashfn(Float::sort(), Index::sort(), freshName("hash"));
 
       auto aVal = hashfn.apply(a.select(Index(0)));
-      for (unsigned i = 1; i < alen; i ++)
-        aVal = aVal + hashfn.apply(a.select(Index(i)));
+      for (unsigned k = 1; k < alen; k ++)
+        aVal = aVal + hashfn.apply(a.select(Index(k)));
       auto bVal = hashfn.apply(b.select(Index(0)));
-      for (unsigned i = 1; i < blen; i ++)
-        bVal = bVal + hashfn.apply(b.select(Index(i)));
+      for (unsigned k = 1; k < blen; k ++)
+        bVal = bVal + hashfn.apply(b.select(Index(k)));
 
       // precond: sumfn(A) != sumfn(B) -> hashfn(A) != hashfn(B)
       // This means if two summations are different, we can find concrete hash function that hashes into different value.
@@ -240,6 +255,50 @@ Expr getAssociativePrecondition() {
     }
   }
   precond = precond.simplify();
+
+  llvm::outs() << "Arrays: " << staticArrays.size() << "\n";
+
+  for (unsigned hashn = 0; hashn <= 6; hashn ++) {
+    FnDecl hashfn(Float::sort(), Index::sort(), "hash" + to_string(hashn));
+    for (unsigned i = 0; i < staticArrays.size(); i ++) {
+      auto [a, an, asum] = staticArrays[i];
+      uint64_t alen;
+      if (!an.isUInt(alen)) continue;
+      auto aVal = hashfn.apply(a.select(Index(0)));
+      for (unsigned k = 1; k < alen; k ++)
+        aVal = aVal + hashfn.apply(a.select(Index(k)));
+      aVal.simplify();
+
+      // auto cond = aVal == hashfn.apply(asum);
+      auto cond = asum == 0;
+      // llvm::outs() << "COND: " << cond << "\n";
+      precond = precond & cond;
+    }
+  }
+  precond = precond.simplify();
+
+  // add forall condition
+  // if (staticArrays.size() > 0) {
+    // auto [a, an, asum] = staticArrays[0];
+    // // (Array (_ BitVec 32) (_ BitVec 32))
+    // auto sort = a.sort();
+    // auto arr1 = Expr::mkVar(sort, "arr1", true);
+    // auto arr2 = Expr::mkVar(sort, "arr2", true);
+    // auto sum_arr1 = (*sumfn)(arr1);
+    // auto sum_arr2 = (*sumfn)(arr2);
+
+    // Expr i = Index::var("idx", VarType::BOUND);
+    // auto isOdd = i.ule(3);
+    // auto arr1i = arr1.select(i); 
+    // auto arr2i = arr2.select(i - 3); 
+    // auto arr3 = Expr::mkLambda(i, Expr::mkIte(isOdd, arr1i, arr2i));
+    // auto sum_arr3 = (*sumfn)(arr3);
+
+    // auto forall = Expr::mkForall({arr1, arr2}, fpAdd(sum_arr1,sum_arr2) == sum_arr3);
+    // precond = precond & forall;
+    // llvm::outs() << "Quantifier: " << forall << "\n";
+  // }
+
   return precond;
 }
 

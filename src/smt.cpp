@@ -590,6 +590,23 @@ Expr Expr::operator*(const Expr &rhs) const {
   return e;
 }
 
+EXPR_BVOP_UINT64(operator/)
+ Expr Expr::operator/(const Expr &rhs) const {
+   Expr e;
+   SET_Z3_USEOP(e, rhs, operator/);
+   SET_CVC5_USEOP(e, rhs, BITVECTOR_UDIV);
+   return e;
+ }
+
+ EXPR_BVOP_UINT64(operator%)
+ Expr Expr::operator%(const Expr &rhs) const {
+   Expr e;
+   SET_Z3_USEOP(e, rhs, operator%);
+   SET_CVC5_USEOP(e, rhs, BITVECTOR_SMOD);
+   return e;
+ }
+
+
 Expr Expr::operator&(const Expr &rhs) const {
   if (rhs.isFalse() || isTrue())
     return rhs;
@@ -871,6 +888,10 @@ bool Sort::isBV() const {
   IF_Z3_ENABLED(if(z3) writeOrCheck(res, z3->is_bv()));
   IF_CVC5_ENABLED(if(cvc5) writeOrCheck(res, cvc5->isBitVector()));
   return res && *res;
+}
+
+void Sort::print() const {
+  cout << "Sort!: " << *z3 << "\n";
 }
 
 Sort Sort::toFnSort() const {
