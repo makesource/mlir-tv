@@ -336,8 +336,7 @@ Expr fpMul(const Expr &f1, const Expr &f2) {
 
 static Expr fpMultisetSum(const Expr &a, const Expr &n) {
   uint64_t length;
-  if (!n.isUInt(length))
-    assert("Only an array of constant length is supported.");
+  assert(n.isUInt(length));
 
   auto &enc = *floatEnc;
   auto bag = Expr::mkEmptyBag(a.sort());
@@ -347,16 +346,15 @@ static Expr fpMultisetSum(const Expr &a, const Expr &n) {
   }
 
   Expr result = enc.getAssocSumFn()(bag);
-
-  if (n.isNumeral())
-    enc.fp_sum_relations.push_back({bag, n, result});
-
+  enc.fp_sum_relations.push_back({bag, n, result});
   return result;
 }
 
 Expr fpSum(const Expr &a, const Expr &n) {
   usedOps.fpSum = true;
   // TODO: check that a.Sort is Index::Sort() -> Float::Sort()
+  if (isFpAddAssociative && !n.isNumeral())
+    assert("Only an array of constant length is supported when verify add's associativity.");
 
   if (isFpAddAssociative && useMultiset)
     return fpMultisetSum(a, n);
@@ -369,7 +367,7 @@ Expr fpSum(const Expr &a, const Expr &n) {
   Expr result = enc.getSumFn()(
       Expr::mkLambda(i, Expr::mkIte(((Expr)i).ult(n), ai, identity)));
 
-  if (isFpAddAssociative && n.isNumeral())
+  if (isFpAddAssociative)
     enc.fp_sum_relations.push_back({a, n, result});
 
   return result;
