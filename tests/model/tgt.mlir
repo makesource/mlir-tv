@@ -6,7 +6,6 @@
 #map5 = affine_map<(d0, d1, d2) -> (d2)>
 #map6 = affine_map<(d0, d1, d2) -> (d0, d1, d2)>
 module  {
-
   func @main2(%4 : tensor<1x16xf32>) -> tensor<1x2xf32> {
     %cst = arith.constant 1.000000e+00 : f32
     %cst_0 = arith.constant 0.000000e+00 : f32
@@ -31,7 +30,28 @@ module  {
     %10 = linalg.init_tensor [1, 2] : tensor<1x2xf32>
     %11 = linalg.fill(%cst_0, %10) : f32, tensor<1x2xf32> -> tensor<1x2xf32> 
     %12 = linalg.matmul ins(%9, %cst_1 : tensor<1x16xf32>, tensor<16x2xf32>) outs(%11 : tensor<1x2xf32>) -> tensor<1x2xf32>
-    return %12 : tensor<1x2xf32>
+    %13 = linalg.init_tensor [1] : tensor<1xf32>
+    %14 = linalg.fill(%cst_0, %13) : f32, tensor<1xf32> -> tensor<1xf32> 
+    %15 = linalg.generic {indexing_maps = [#map3, #map2, #map4], iterator_types = ["parallel", "reduction"]} ins(%cst_7, %12 : tensor<2xf32>, tensor<1x2xf32>) outs(%14 : tensor<1xf32>) {
+    ^bb0(%arg1: f32, %arg2: f32, %arg3: f32):  // no predecessors
+      %21 = arith.addf %arg1, %arg2 : f32
+      %22 = math.exp %21 : f32
+      %23 = arith.addf %22, %arg3 : f32
+      linalg.yield %23 : f32
+    } -> tensor<1xf32>
+    %16 = tensor.expand_shape %15 [[0, 1]] : tensor<1xf32> into tensor<1x1xf32>
+    %17 = tensor.expand_shape %12 [[0, 1], [2]] : tensor<1x2xf32> into tensor<1x1x2xf32>
+    %18 = linalg.init_tensor [1, 1, 2] : tensor<1x1x2xf32>
+    %19 = linalg.generic {indexing_maps = [#map5, #map6, #map0, #map6], iterator_types = ["parallel", "parallel", "parallel"]} ins(%cst_7, %17, %16 : tensor<2xf32>, tensor<1x1x2xf32>, tensor<1x1xf32>) outs(%18 : tensor<1x1x2xf32>) {
+    ^bb0(%arg1: f32, %arg2: f32, %arg3: f32, %arg4: f32):  // no predecessors
+      %21 = arith.divf %cst, %arg3 : f32
+      %22 = arith.addf %arg1, %arg2 : f32
+      %23 = math.exp %22 : f32
+      %24 = arith.mulf %23, %21 : f32
+      linalg.yield %24 : f32
+    } -> tensor<1x1x2xf32>
+    %20 = tensor.collapse_shape %19 [[0, 1], [2]] : tensor<1x1x2xf32> into tensor<1x2xf32>
+    return %20 : tensor<1x2xf32>
   }
 }
 
