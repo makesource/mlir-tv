@@ -277,7 +277,7 @@ FnDecl AbsFpEncoding::getAddFn() {
 
 FnDecl AbsFpEncoding::getMulFn() {
   if (!fp_mulfn) {
-    auto fty = Sort::bvSort(value_bitwidth);
+    auto fty = sort();
     fp_mulfn.emplace({fty, fty}, fty, "fp_mul_" + fn_suffix);
   }
   return *fp_mulfn;
@@ -285,7 +285,7 @@ FnDecl AbsFpEncoding::getMulFn() {
 
 FnDecl AbsFpEncoding::getDivFn() {
   if (!fp_mulfn) {
-    auto fty = Sort::bvSort(value_bitwidth);
+    auto fty = sort();
     fp_mulfn.emplace({fty, fty}, fty, "fp_div_" + fn_suffix);
   }
   return *fp_mulfn;
@@ -628,6 +628,7 @@ Expr AbsFpEncoding::add(const Expr &_f1, const Expr &_f2) {
   // This NaN case is specially treated below.
   // Simply redirect the result to zero.
   fp_add_res = Expr::mkIte(isnan(fp_add_res), zero(), fp_add_res);
+  return fp_add_res;
   auto fp_add_sign = getSignBit(fp_add_res);
   auto fp_add_value = getMagnitudeBits(fp_add_res);
 
@@ -665,6 +666,7 @@ Expr AbsFpEncoding::add(const Expr &_f1, const Expr &_f2) {
 
 Expr AbsFpEncoding::mul(const Expr &_f1, const Expr &_f2) {
   usedOps.fpMul = true;
+  return getMulFn().apply({_f1, _f2});
 
   auto fp_id = one();
   auto fp_minusone = one(true);
@@ -689,7 +691,7 @@ Expr AbsFpEncoding::mul(const Expr &_f1, const Expr &_f2) {
   // Absolute size of mul cannot be NaN (Inf * 0.0 and NaN * x will be special-
   // cased).
   mul_abs_res = Expr::mkIte(isnan(mul_abs_res), fp_id, mul_abs_res);
-
+  return bv_true.concat(getMagnitudeBits(mul_abs_res));
   // Calculate the absolute value of f1 * f2.
   // The sign bit(s) will be replaced in the next step,
   // so it is better to completely ignore the signs in this step.
@@ -731,6 +733,7 @@ Expr AbsFpEncoding::mul(const Expr &_f1, const Expr &_f2) {
 
 Expr AbsFpEncoding::div(const Expr &_f1, const Expr &_f2) {
   usedOps.fpDiv = true;
+  return getDivFn().apply({_f1, _f2});
 
   auto fp_zero_pos = zero();
   auto fp_zero_neg = zero(true);
@@ -756,6 +759,7 @@ Expr AbsFpEncoding::div(const Expr &_f1, const Expr &_f2) {
   // (0.0 / 0.0, Inf / Inf, and div between one or more NaN
   // will be special-cased).
   div_abs_res = Expr::mkIte(isnan(div_abs_res), fp_id, div_abs_res);
+  return bv_true.concat(getMagnitudeBits(div_abs_res));
 
   // Calculate the absolute value of f1 / f2.
   // The sign bit(s) will be replaced in the next step,
@@ -905,6 +909,7 @@ Expr AbsFpEncoding::sum(const Expr &a, const Expr &n,
 
 Expr AbsFpEncoding::exp(const Expr &x) {
   // A very simple model. :)
+  return getExpFn().apply(x);
   return Expr::mkIte(
       isnan(x) | (x == infinity()), x,
       Expr::mkIte(x == infinity(true), zero(),
