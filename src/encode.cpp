@@ -1283,7 +1283,7 @@ static void encodeParallelLoopBodyAndOutputs(
     Expr resExpr = newst.regs.getExpr(yieldedValues[i]);
     if (outputValMap)
       resExpr = (*outputValMap)(resExpr, outputIndVars);
-
+    
     auto il = Tensor::mkInitializedLambda(yieldedValues[i].getType(),
         vector(tensorSz), vector(outputIndVars), resExpr);
     tvec_res->push_back(il);
@@ -1416,11 +1416,19 @@ void encodeOp(State &st, mlir::linalg::InitTensorOp op, bool) {
     }
   }
 
-  // FIXME: can we use res's name?
-  static int new_var_idx = 0;
+    // auto filled = Tensor(ety, move(elemval), t.getDims());
+    // st.regs.add(op.getResult(0), move(filled));
+  auto ety = ty.getElementType();
+  auto elemval = Float::constant(llvm::APFloat(-0.0f), ety);
   st.regs.add(res,
-      Tensor::var(ty.getElementType(),
-          ("init_tensor#") + to_string(new_var_idx++), sizes, false));
+    Tensor(ety, move(elemval), move(sizes)));
+    
+
+  // FIXME: can we use res's name?
+  // static int new_var_idx = 0;
+  // st.regs.add(res,
+  //     Tensor::var(ty.getElementType(),
+  //         ("init_tensor#") + to_string(new_var_idx++), sizes, false));
 }
 
 template<>

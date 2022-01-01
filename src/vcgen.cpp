@@ -560,11 +560,10 @@ static Results validate(ValidationInput vinput) {
   // (abstraction, use ALL logic?)
   queue<pair<Abstraction, bool>> queue;
 
-  queue.push({{AbsLevelFpDot::FULLY_ABS,
+  queue.push({{AbsLevelFpDot::SUM_MUL,
       AbsLevelFpCast::FULLY_ABS,
       AbsLevelIntDot::FULLY_ABS,
-      vinput.isFpAddAssociative ? AbsFpAddSumEncoding::USE_SUM_ONLY :
-                  AbsFpAddSumEncoding::DEFAULT},
+      AbsFpAddSumEncoding::UNROLL_TO_ADD},
       /* useAllLogic */arg_smt_use_all_logic.getValue() });
 
 
