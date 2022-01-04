@@ -410,6 +410,17 @@ void AbsFpEncoding::addConstants(const set<llvm::APFloat>& const_set) {
       continue;
     }
 
+    {
+      value_id += 1;
+      auto eValue = Expr::mkBV(value_id, value_bitwidth);
+      Expr e_pos = Expr::mkBV(0, SIGN_BITS).concat(eValue);
+      fpconst_absrepr.emplace(fp_const, e_pos);
+      Expr e_neg = Expr::mkBV(1, SIGN_BITS).concat(eValue);
+      fpconst_absrepr.emplace(-fp_const, e_neg);
+
+      continue;
+    }
+
     optional<Expr> e_value;
 
     if (value_bit_info.limit_bitwidth == 0 &&
